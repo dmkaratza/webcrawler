@@ -37,9 +37,11 @@ class CrawlerPipeline[T <: SeedEndpoint](seedEndpoint: T,
     else {
       val downloadedPages =
         accumulatedPages
-          .mapAsync(1) { page =>
+          .mapAsync(3) { page =>
             parseExternalLinksOnly(page)
-              .map(extUrl => downloadDocumentOpt(extUrl.url).map(_.toList)).sequence
+              .map{extUrl =>
+//                println(s">>>downloading ${extUrl.url.url}, depth = ${url.depth}")
+                downloadDocumentOpt(extUrl.url).map(_.toList)}.sequence
           }
           .flatMapConcat { listOfOptDocs =>
             Source.fromIterator(() => listOfOptDocs.flatten.toIterator)
@@ -67,6 +69,7 @@ class CrawlerPipeline[T <: SeedEndpoint](seedEndpoint: T,
 
   private def fileFlow: Flow[Page, IOResult, NotUsed] =
     Flow[Page].mapAsync(4) { page ⇒
+//      println(s">>>>> ${page.url}")
       Source.single(ByteString(s"${page.url} \n ${page.document.html()}")).runWith(FileIO.toPath(Paths.get(CrawlerConfig.getFileName(config.outputPath))))
     }
 }

@@ -47,15 +47,6 @@ class CrawlerPipelineSpec extends AnyFreeSpec with AkkaStreamSpecBase with Match
       result.size should ===(4)
     }
 
-    "returns 4 pages when seed url exists depth is 2, given that external limit is 3" in {
-      val urlWithDepth = url.copy(depth = 2)
-      val pageWithDepth = Page(url.url, depth = 2, url.externalLinksLimit, WikiHtml.sample())
-      val result = CrawlerPipeline(urlWithDepth, config)
-        .downloadPages(urlWithDepth, Source.single(pageWithDepth)).runWith(Sink.seq[Page]).futureValue
-
-      result.size should ===(4)
-    }
-
     "parses the configured number of valid external links per page" in {
       val result = crawlerPipeline.parseExternalLinksOnly(
         page = Page(url.url, url.depth, url.externalLinksLimit, WikiHtml.sample())
