@@ -1,0 +1,10 @@
+Manifest-Version: 1.0
+Implementation-Title: scala-scraper
+Implementation-Version: 2.0.0
+Specification-Vendor: net.ruippeixotog
+Specification-Title: scala-scraper
+Implementation-Vendor-Id: net.ruippeixotog
+Specification-Version: 2.0.0
+Implementation-URL: https://github.com/ruippeixotog/scala-scraper
+Implementation-Vendor: net.ruippeixotog
+
