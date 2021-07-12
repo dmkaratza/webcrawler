@@ -17,12 +17,10 @@ object Endpoint extends App {
   val config: CrawlerConfig = ConfigSource.default.loadOrThrow[CrawlerConfig]
 
   val source =
-    Url("https://en.wikipedia.org/wiki/Akka_(toolkit)", 2, 3)
-  //    Source
-  //    .single(Url(
-  //    System.getProperty("start-url"),
-  //    System.getProperty("depth").toLong,
-  //    System.getProperty("links-limit").toInt))
+    Url(
+      url = System.getProperty("start-url"),
+      depth = System.getProperty("depth").toLong,
+      externalLinksLimit = System.getProperty("links-limit").toInt)
   val result = CrawlerPipeline(source, config).run
 
   result.onComplete {

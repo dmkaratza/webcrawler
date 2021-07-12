@@ -3,7 +3,7 @@ package com.leonteq.webcrawler.model
 import org.jsoup.nodes.Document
 import scala.util.Random
 
-trait SeedEndpoint {
+sealed trait SeedEndpoint {
   def url: String
 
   def depth: Long
@@ -13,9 +13,9 @@ trait SeedEndpoint {
 
 final case class Url(url: String, depth: Long, externalLinksLimit: Int) extends SeedEndpoint
 
-final case class Page(url: String, depth: Long, externalLinksLimit: Int, document: Document) extends SeedEndpoint
+final case class Page[T<: SeedEndpoint](url: T, document: Document)
 
-final case class ExternalUrl(url: Url, linkDomain: String, urlDomain: String)
+final case class ExternalUrl[T<: SeedEndpoint](url: T, linkDomain: String, urlDomain: String)
 
 case class CrawlerConfig(outputPath: String)
 

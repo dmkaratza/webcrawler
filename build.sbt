@@ -24,13 +24,6 @@ val dependencies = {
   )
 }
 
-//def setForkedWorkingDirectory: Seq[Setting[_]] = {
-//  // When we fork subprocesses, use the base directory as the working directory.
-//  // This enables `sbt> partest test/files/run/t1.scala` or `sbt> scalac sandbox/test.scala`
-//  val setting = (Compile / forkOptions) := (Compile / forkOptions).value.withWorkingDirectory((ThisBuild / baseDirectory).value)
-//  setting ++ inTask(run)(setting)
-//}
-
 lazy val root = (project in file("."))
   .settings(
     name := "webcrawler",
@@ -38,4 +31,3 @@ lazy val root = (project in file("."))
   ).settings(assembly / assemblyJarName := "webcrawler.jar")
 
 Compile / unmanagedSourceDirectories += baseDirectory.value / "downloaded-pages"
-//javaOptions in runMain += "-Dplay.http.secret.key=mysupersecretkey"

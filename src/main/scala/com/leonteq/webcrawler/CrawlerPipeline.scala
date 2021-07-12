@@ -6,16 +6,16 @@ import akka.util.ByteString
 import akka.{Done, NotUsed}
 import cats.implicits._
 import com.leonteq.webcrawler.CrawlerPipeline._
-import com.leonteq.webcrawler.model.{CrawlerConfig, ExternalUrl, Page, SeedEndpoint, Url}
+import com.leonteq.webcrawler.model._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 
 import java.net.URL
 import java.nio.file.Paths
+import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.Try
-import scala.annotation.tailrec
 
 class CrawlerPipeline[T <: SeedEndpoint](seedEndpoint: T,
                                          config: CrawlerConfig)
@@ -26,27 +26,28 @@ class CrawlerPipeline[T <: SeedEndpoint](seedEndpoint: T,
       .via(fileFlow)
       .runWith(Sink.ignore)
 
-  def crawlingFlow: Source[Page, NotUsed] =
+  def crawlingFlow: SourceType =
     Source.fromFuture(downloadDocument(seedEndpoint.url))
       .flatMapMerge(1, doc =>
-        downloadPages(seedEndpoint, Source.single(Page(seedEndpoint.url, seedEndpoint.depth, seedEndpoint.externalLinksLimit, doc))))
+        downloadPages(seedEndpoint.depth, Source.single(Page(seedEndpoint, doc)), Source.empty)
+      )
 
   @tailrec
-  final def downloadPages[T <: SeedEndpoint](url: T, accumulatedPages: Source[Page, NotUsed]): Source[Page, NotUsed] = {
-    if (url.depth == 0) accumulatedPages
+  final def downloadPages(depth: Long, seedPages: SourceType, downloadedPages: SourceType): SourceType = {
+    if (depth == 0) seedPages.merge(downloadedPages)
     else {
-      val downloadedPages =
-        accumulatedPages
+      val updatedSeedPages =
+        seedPages
           .mapAsync(3) { page =>
             parseExternalLinksOnly(page)
-              .map{extUrl =>
-//                println(s">>>downloading ${extUrl.url.url}, depth = ${url.depth}")
-                downloadDocumentOpt(extUrl.url).map(_.toList)}.sequence
+              .map { extUrl =>
+                downloadDocumentOpt(extUrl.url).map(_.toList)
+              }.sequence
           }
           .flatMapConcat { listOfOptDocs =>
             Source.fromIterator(() => listOfOptDocs.flatten.toIterator)
           }
-      downloadPages(Url(url.url, url.depth - 1, url.externalLinksLimit), downloadedPages.merge(accumulatedPages))
+      downloadPages(depth - 1, updatedSeedPages, seedPages.merge(downloadedPages))
     }
   }
 
@@ -54,35 +55,36 @@ class CrawlerPipeline[T <: SeedEndpoint](seedEndpoint: T,
    * @param page Web page to parse the external links from
    * @return A list of urls which do not have the same domain with the seed url - external links
    */
-  def parseExternalLinksOnly(page: Page): List[ExternalUrl] =
-    extractUrlDomain(page.url).toList
+  def parseExternalLinksOnly[T <: SeedEndpoint](page: Page[T]): List[ExternalUrl[SeedEndpoint]] =
+    extractUrlDomain(page.url.url).toList
       .flatMap(urlDomain =>
         page.document.getElementsByAttributeStarting("href").asScala
           .toList
           .map(_.attr("abs:href"))
           .filter(_.startsWith("http"))
           .flatMap(link => extractLinkDomain(link).map(linkDomain =>
-            ExternalUrl(Url(link, page.depth, page.externalLinksLimit), linkDomain, urlDomain)
+            ExternalUrl(Url(link, page.url.depth, page.url.externalLinksLimit): SeedEndpoint, linkDomain, urlDomain)
           ))
       ).filterNot(externalUrl => externalUrl.linkDomain == externalUrl.urlDomain)
-      .take(page.externalLinksLimit)
+      .take(page.url.externalLinksLimit)
 
-  private def fileFlow: Flow[Page, IOResult, NotUsed] =
-    Flow[Page].mapAsync(4) { page ⇒
-//      println(s">>>>> ${page.url}")
-      Source.single(ByteString(s"${page.url} \n ${page.document.html()}")).runWith(FileIO.toPath(Paths.get(CrawlerConfig.getFileName(config.outputPath))))
+  private def fileFlow: Flow[Page[SeedEndpoint], IOResult, NotUsed] =
+    Flow[Page[SeedEndpoint]].mapAsync(4) { page ⇒
+      Source.single(ByteString(s"${page.url.url} \n ${page.document.html()}")).runWith(FileIO.toPath(Paths.get(CrawlerConfig.getFileName(config.outputPath))))
     }
 }
 
 object CrawlerPipeline {
+  type SourceType = Source[Page[SeedEndpoint], NotUsed]
+
   def apply(source: Url, config: CrawlerConfig)
            (implicit executionContext: ExecutionContextExecutor, materializer: ActorMaterializer) =
     new CrawlerPipeline(source, config)
 
-  def downloadDocumentOpt(url: Url): Future[Option[Page]] = Future.successful(
+  def downloadDocumentOpt[T <: SeedEndpoint](url: T): Future[Option[Page[T]]] = Future.successful(
     Try {
       val document = Jsoup.connect(url.url).get()
-      Page(url.url, url.depth, url.externalLinksLimit, document)
+      Page(url, document)
     }.toOption
   )
 
