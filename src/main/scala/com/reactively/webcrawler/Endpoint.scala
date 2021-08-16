@@ -1,8 +1,8 @@
-package com.leonteq.webcrawler
+package com.reactively.webcrawler
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
-import com.leonteq.webcrawler.model.{CrawlerConfig, Url}
+import com.reactively.webcrawler.model.{CrawlerConfig, Url}
 import pureconfig.ConfigSource
 import pureconfig.generic.auto._
 
@@ -16,12 +16,9 @@ object Endpoint extends App {
 
   val config: CrawlerConfig = ConfigSource.default.loadOrThrow[CrawlerConfig]
 
-  val source =
-    Url(
-      url = System.getProperty("start-url"),
-      depth = System.getProperty("depth").toLong,
-      externalLinksLimit = System.getProperty("links-limit").toInt)
-  val result = CrawlerPipeline(source, config).run
+  val seedUrl =
+    Url(url = System.getProperty("start-url"))
+  val result = CrawlerPipeline(seedUrl, config).run
 
   result.onComplete {
     case Success(_) =>

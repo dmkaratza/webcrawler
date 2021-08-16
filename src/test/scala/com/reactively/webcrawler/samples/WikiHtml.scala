@@ -1,4 +1,4 @@
-package com.leonteq.webcrawler.samples
+package com.reactively.webcrawler.samples
 
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
