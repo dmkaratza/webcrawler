@@ -10,7 +10,7 @@ final case class CrawlerConfig(depth: Long, linksLimit: Int, outputPath: String)
   def getFileName: String = s"$outputPath/${Random.alphanumeric.take(8).mkString}"
 }
 
-trait SeedEndpoint {
+sealed trait SeedEndpoint {
   def url: String
 }
 
